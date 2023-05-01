@@ -11,20 +11,20 @@ public class PaymentService {
     /** доп. задание от Петра к экзамену на Spring https://pastebin.com/ZbR5EEPM*/
 
      private PaymentRepository paymentRepository;
-     private FeeRepository feeRepository;
-     private UserRepository userRepository;
+     private UserService userService;
+     private FeeService feeService;
 
      private NotificationRestClient notificationRestClient = new NotificationRestClient();
      private CbrRestClient cbrRestClient = new CbrRestClient();
 
      public Optional<User> findAuthorizedUser() {
          Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-         var user = userRepository.findUserById(userId);
+         var user = userService.findUserById(userId);
          return user;
      }
 
-     public Optional<User> findUserById(int id) {
-         return userRepository.findUserById(id);
+     public Optional<User> findUserById(Long id) {
+         return userService.findUserById(id);
      }
 
      public double getFeeKoeff(double amount) {
@@ -36,6 +36,11 @@ public class PaymentService {
          }
          return 0.01;
      }
+
+    @Transactional
+    public Payment save(Payment payment) {
+         return paymentRepository.save(payment);
+    }
 
      @Transactional
      public boolean processPayment(double amount, Currency currency, Long recipientId) {
@@ -54,10 +59,10 @@ public class PaymentService {
         userDst.get().setBalance(userDst.get().getBalance + amountInRub);
 
         Payment payment = new Payment(amountInRub, findUser(), recipientId);
-        paymentRepository.save(payment);
+        save(payment);
 
         Fee fee = new Fee(amount * feeKoeff, userSrc);
-        feeRepository.save(fee);
+        feeService.save(fee);
 
         try {
             notificationRestClient.notify(payment);
